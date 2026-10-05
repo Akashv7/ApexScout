@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player Profile | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="player">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="cricket.html">&larr; Back to Leaderboard</a>
+  </div>
+</nav>
+
+<header class="profile-head" id="profile-head"><div class="wrap"><p class="small-note" style="color:rgba(244,242,232,0.6);">Loading…</p></div></header>
+
+<div class="wrap profile-body">
+  <div>
+    <div class="stat-block">
+      <h4>ABOUT</h4>
+      <p id="bio-text" style="font-size:14.5px; color:var(--ink-soft); line-height:1.6;"></p>
+    </div>
+
+    <div class="stat-block">
+      <h4>MATCH-BY-MATCH PERFORMANCE (used by the Talent Index Engine)</h4>
+      <table class="board" id="perf-table" style="font-size:13px;">
+        <thead><tr><th>Date</th><th>Type</th><th>Detail</th></tr></thead>
+        <tbody id="perf-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="side-card">
+      <h4>TALENT INDEX</h4>
+      <div id="profile-dial" style="text-align:center; margin-bottom:8px;"></div>
+      <p id="index-note" style="font-size:13px; color:var(--ink-soft); text-align:center; line-height:1.5;"></p>
+    </div>
+
+    <div class="side-card">
+      <h4>TRUST TIER</h4>
+      <div id="trust-badge"></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:14px; width:100%; justify-content:center;" onclick="runVerify()">Run Verification Agent</button>
+      <div id="verify-result" style="margin-top:12px; font-size:12.5px; color:var(--ink-soft);"></div>
+    </div>
+
+    <div class="side-card">
+      <h4>MATCH FOOTAGE</h4>
+      <div class="vid-thumb">&#9654; Highlight reel placeholder</div>
+      <p class="small-note">Video upload &amp; AI highlight extraction isn't wired up yet — this is a UI placeholder for that future feature.</p>
+    </div>
+
+    <a class="btn btn-primary" style="width:100%; justify-content:center;" href="scout.html">Go to Scout Zone &rarr;</a>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>All numbers on this page are computed live from match history.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const playerId = params.get("id");
+  let currentPlayer = null;
+
+  async function load(){
+    try {
+      currentPlayer = await apiGet(`/players/${playerId}`);
+      render(currentPlayer);
+    } catch(e){
+      document.getElementById("profile-head").innerHTML = `<div class="wrap"><p style="color:rgba(244,242,232,0.7);">Player not found. <a href="cricket.html" style="color:var(--flood);">Back to leaderboard</a></p></div>`;
+    }
+  }
+
+  function render(player){
+    document.title = player.name + " | Unseen XI";
+    document.getElementById("profile-head").innerHTML = `
+      <div class="wrap">
+        <div class="eyebrow">${player.sport.toUpperCase()} · ${player.format.toUpperCase()}</div>
+        <div class="profile-top">
+          <div>
+            <div class="profile-name">${player.name}</div>
+            <div class="profile-meta-line">${player.role} · ${player.location || "—"} · Age ${player.age || "—"}</div>
+            <div class="profile-meta-line">${player.league ? player.league.name + " (League Strength " + player.league.strength + "/100)" : "Not yet attached to a league"}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById("bio-text").textContent = player.bio || "No bio provided yet.";
+
+    document.getElementById("perf-body").innerHTML = (player.performances || []).map(perf => `
+      <tr>
+        <td>${perf.date}</td>
+        <td style="text-transform:capitalize;">${perf.type}</td>
+        <td>${perf.type === "batting"
+          ? `${perf.runs} runs off ${perf.ballsFaced || "?"} balls`
+          : `${perf.wickets} wkts, econ ${perf.economy ?? "?"}`}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="3" class="small-note">No match performances logged yet.</td></tr>`;
+
+    renderDial("profile-dial", player.talentIndex, 180);
+    document.getElementById("index-note").innerHTML = player.talentIndex === null
+      ? `Not enough match data yet — the index needs at least one logged performance.`
+      : `<strong style="color:var(--ink); font-family:var(--display); font-size:22px; display:block; margin-top:6px;">${player.talentIndex} / 100</strong>Computed from ${player.matchesCounted || 0} match performance(s), weighted by opponent strength.`;
+
+    document.getElementById("trust-badge").innerHTML = `
+      <span class="trust ${player.trust}"><span class="trust-dot"></span>${trustLabel(player.trust)}</span>
+    `;
+  }
+
+  async function runVerify(){
+    const el = document.getElementById("verify-result");
+    el.textContent = "Running…";
+    try {
+      const result = await apiPost(`/agents/verify/${playerId}`, {});
+      el.innerHTML = `
+        <strong>Verdict: ${result.verdict}</strong> (confidence ${result.confidence}%)<br>
+        Checked ${result.matchesChecked} match performance(s).
+        ${result.flags.length ? "<br>Flags:<br>&bull; " + result.flags.join("<br>&bull; ") : "<br>No issues found."}
+        ${result.newTrustTier !== currentPlayer.trust ? `<br><strong style="color:var(--turf-deep);">Trust tier upgraded to ${trustLabel(result.newTrustTier)}.</strong>` : ""}
+      `;
+      await load();
+    } catch(e){
+      el.textContent = "Error: " + e.message;
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

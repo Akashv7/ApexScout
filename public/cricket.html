@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cricket — Ground &amp; Turf Leaderboards | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="cricket">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="register.html">Register a Player</a>
+  </div>
+</nav>
+
+<header class="hero" style="padding:48px 0 40px;">
+  <div class="wrap">
+    <div class="eyebrow">SPORT: CRICKET</div>
+    <h2 style="color:var(--chalk); margin-top:10px;">Ground vs Turf are scored separately —<br>on purpose.</h2>
+    <p class="hero-sub" style="margin-top:14px;">Leather-ball ground cricket and tennis-ball turf/box cricket reward different skills and attract different competition levels. Mixing them into one leaderboard would make the Talent Index meaningless, so each format gets its own board and its own league-strength model.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="format-tabs">
+      <div class="format-tab active" data-format="Ground" onclick="showFormat('Ground')">Ground / Leather-ball</div>
+      <div class="format-tab" data-format="Turf" onclick="showFormat('Turf')">Turf / Box / Tennis-ball</div>
+    </div>
+
+    <table class="board">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>League</th>
+          <th>League Strength</th>
+          <th>Talent Index</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="board-body"></tbody>
+    </table>
+
+    <p style="margin-top:18px; font-size:13px; color:var(--ink-soft);">
+      <strong>League Strength</strong> is a live Elo-style rating (0–100) computed from match results within that league — it's what the Talent Index Engine adjusts against, so a strong performance in a weak league doesn't outrank a strong performance in a tough one without good reason.
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>Kabaddi, Football &amp; Badminton sections use the same schema — coming next.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  async function showFormat(fmt){
+    document.querySelectorAll(".format-tab").forEach(t => t.classList.toggle("active", t.dataset.format === fmt));
+    document.getElementById("board-body").innerHTML = skeletonTableRows(5, 6);
+    try {
+      const list = await apiGet(`/players?sport=Cricket&format=${fmt}`);
+      document.getElementById("board-body").innerHTML = list.length
+        ? list.map((p,i)=> boardRowHTML(p, i+1)).join("")
+        : `<tr><td colspan="6" style="padding:0;">${emptyStateHTML("?", "No " + fmt + " players yet", "No players with enough match data in this format yet.")}</td></tr>`;
+    } catch(e){
+      document.getElementById("board-body").innerHTML = `<tr><td colspan="6" style="padding:0;">${emptyStateHTML("!", "Couldn't reach the API", e.message)}</td></tr>`;
+    }
+  }
+  showFormat("Ground");
+</script>
+</body>
+</html>

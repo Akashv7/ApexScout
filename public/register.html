@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register a Player | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="register">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="cricket.html">View Leaderboards</a>
+  </div>
+</nav>
+
+<header class="hero" style="padding:48px 0 36px;">
+  <div class="wrap">
+    <div class="eyebrow">PLAYER / COACH SELF-REGISTRATION</div>
+    <h2 style="color:var(--chalk); margin-top:10px;">Get on the board.</h2>
+    <p class="hero-sub" style="margin-top:14px;">Your Talent Index starts blank until match performances are logged (via the Record a Match page) — this just creates your profile.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div id="form-msg"></div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>Full Name</label>
+        <input type="text" id="f-name" placeholder="e.g. Priya Ramaswamy">
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>Age</label>
+          <input type="number" id="f-age" placeholder="19">
+        </div>
+        <div class="form-row">
+          <label>Location</label>
+          <input type="text" id="f-location" placeholder="City, State">
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>Format</label>
+          <select id="f-format">
+            <option value="Ground">Ground / Leather-ball</option>
+            <option value="Turf">Turf / Box / Tennis-ball</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Role</label>
+          <select id="f-role">
+            <option>Fast Bowler</option>
+            <option>Fast-medium Bowler</option>
+            <option>Left-arm Spinner</option>
+            <option>Off Spinner</option>
+            <option>Top-order Batter</option>
+            <option>Middle-order Batter</option>
+            <option>Batting All-rounder</option>
+            <option>Wicketkeeper-Batter</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>League</label>
+        <select id="f-league"><option>Loading leagues…</option></select>
+      </div>
+      <div class="form-row">
+        <label>Short Bio</label>
+        <textarea id="f-bio" placeholder="A couple of sentences about your playing style…"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="submitForm()">Create Profile</button>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>Bios are screened by the Moderation Agent before saving.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  (async function(){
+    const leagues = await apiGet("/leagues");
+    document.getElementById("f-league").innerHTML = leagues.map(l => `<option value="${l.id}">${l.name} (${l.region})</option>`).join("");
+  })();
+
+  async function submitForm(){
+    const msg = document.getElementById("form-msg");
+    msg.innerHTML = "";
+    const payload = {
+      name: document.getElementById("f-name").value.trim(),
+      age: document.getElementById("f-age").value,
+      location: document.getElementById("f-location").value.trim(),
+      sport: "Cricket",
+      format: document.getElementById("f-format").value,
+      role: document.getElementById("f-role").value,
+      leagueId: document.getElementById("f-league").value,
+      bio: document.getElementById("f-bio").value.trim(),
+    };
+    if (!payload.name){
+      msg.innerHTML = `<div class="form-msg error">Please enter a name.</div>`;
+      return;
+    }
+    try {
+      const player = await apiPost("/players", payload);
+      msg.innerHTML = `<div class="form-msg success">Profile created! <a href="player.html?id=${player.id}" style="font-weight:700;">View it &rarr;</a></div>`;
+      document.getElementById("f-name").value = "";
+      document.getElementById("f-bio").value = "";
+    } catch(e){
+      msg.innerHTML = `<div class="form-msg error">${e.message}</div>`;
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unseen XI — Grassroots Talent, Rated Fairly</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="home">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="register.html">Register a Player</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">GRASSROOTS TALENT · RATED, NOT JUST RANKED</div>
+      <h1>Every league<br>plays <span>different.</span><br>Your rating shouldn't.</h1>
+      <p class="hero-sub">
+        Unseen XI turns local-league stats into a single trustworthy number —
+        adjusted for who you actually played against — so a scout in Chennai
+        can trust a number earned in a league they've never heard of.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="cricket.html">Explore Cricket Rankings</a>
+        <a class="btn btn-ghost-dark" href="scout.html">I'm a Scout</a>
+      </div>
+    </div>
+
+    <div class="dial-card">
+      <div class="dial-card-head">
+        <span class="name" id="hero-name">—</span>
+        <span class="tag-verified tag" id="hero-tag">—</span>
+      </div>
+      <div class="dial-wrap">
+        <div id="hero-dial"></div>
+        <div>
+          <div class="dial-figure" id="hero-figure">—<small>/100</small></div>
+        </div>
+      </div>
+      <p class="dial-note" id="hero-note">Loading a live example from the API…</p>
+      <div class="dial-legend">
+        <span><span class="swatch" style="background:#B5502A"></span>Ground</span>
+        <span><span class="swatch" style="background:#3E7A4C"></span>Turf</span>
+        <span><span class="swatch" style="background:#F2B705"></span>Talent Index</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">DISCOVER · POWERED BY THE DISCOVERY AGENT</div>
+        <h2>Hidden gems right now</h2>
+      </div>
+      <a class="btn btn-ghost" href="cricket.html">See full leaderboards &rarr;</a>
+    </div>
+    <div class="card-grid" id="discover-grid"></div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">LEAGUE QUALITY · COMPUTED BY THE TALENT INDEX ENGINE</div>
+        <h2>Not all leagues play the same.</h2>
+      </div>
+    </div>
+    <div class="player-card" style="cursor:default; max-width:640px;">
+      <div id="league-chart"></div>
+      <p class="small-note" style="margin-top:16px;">These strength scores are what every player's Talent Index gets weighted against — see the <a href="agents.html" style="color:var(--clay-deep); font-weight:600;">AI Agents dashboard</a> for how.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">WHY THIS EXISTS</div>
+        <h2>Raw stats lie. Context doesn't.</h2>
+      </div>
+    </div>
+    <div class="card-grid">
+      <div class="player-card" style="cursor:default;">
+        <h3 style="font-size:20px;margin-bottom:10px;">The problem</h3>
+        <p style="color:var(--ink-soft); font-size:14.5px;">A batter averaging 60 in a weak league looks identical, on paper, to one averaging 60 in a brutal one. Selectors have no way to tell the difference — so they default to ignoring local leagues entirely.</p>
+      </div>
+      <div class="player-card" style="cursor:default;">
+        <h3 style="font-size:20px;margin-bottom:10px;">The fix</h3>
+        <p style="color:var(--ink-soft); font-size:14.5px;">Every match feeds a real Elo-style league/team strength rating. Individual stats are weighted by who you actually beat — computed live by the Talent Index Engine, not typed in by hand.</p>
+      </div>
+      <div class="player-card" style="cursor:default;">
+        <h3 style="font-size:20px;margin-bottom:10px;">The result</h3>
+        <p style="color:var(--ink-soft); font-size:14.5px;">Players dominant in a weaker league get flagged by the Discovery Agent as worth a closer look, rather than dismissed for playing "easy" cricket.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI — a grassroots talent recognition project.</span>
+    <span>Live app · Cricket (Ground &amp; Turf) · 4 working AI agents</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  (async function(){
+    document.getElementById("discover-grid").innerHTML = skeletonCards(3);
+    try {
+      const [players, leagues] = await Promise.all([
+        apiGet("/players?sport=Cricket"),
+        apiGet("/leagues"),
+      ]);
+      const top6 = players.slice(0, 6);
+      document.getElementById("discover-grid").innerHTML = top6.length
+        ? top6.map(playerCardHTML).join("")
+        : emptyStateHTML("+", "No players yet", "Register a player to see them appear here.");
+
+      renderBarChart("league-chart", leagues.map(l => ({ label: l.name, value: l.strength })));
+
+      if (players.length) {
+        const hero = players[0];
+        document.getElementById("hero-name").textContent = hero.name;
+        document.getElementById("hero-tag").textContent = trustLabel(hero.trust);
+        document.getElementById("hero-figure").innerHTML = hero.talentIndex + "<small>/100</small>";
+        document.getElementById("hero-note").textContent =
+          `${hero.role}, ${hero.league ? hero.league.name : "unaffiliated"} (strength ${hero.league ? hero.league.strength : "—"}/100). Computed live by the Talent Index Engine from real match history.`;
+        renderDial("hero-dial", hero.talentIndex, 140);
+      }
+    } catch (e) {
+      document.getElementById("discover-grid").innerHTML = emptyStateHTML("!", "Couldn't reach the API", `Is the server running? (${e.message})`);
+    }
+  })();
+</script>
+</body>
+</html>

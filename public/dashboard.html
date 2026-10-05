@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unseen Sports - AI Scouting Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.5);
+      --accent: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Glassmorphism Header */
+    header {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand h1 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .global-controls select {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .global-controls select:hover {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    /* Main Layout */
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      border-right: 1px solid var(--border-color);
+      padding: 2rem 1rem;
+      background: rgba(30, 41, 59, 0.3);
+    }
+
+    .sidebar nav ul { list-style: none; }
+    .sidebar nav ul li {
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .sidebar nav ul li:hover, .sidebar nav ul li.active {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--primary);
+    }
+
+    /* Content Area */
+    .content {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    .dashboard-header {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .dashboard-header h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 1rem;
+      background: var(--bg-card);
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .filters select, .filters input {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
+      color: white;
+      padding: 0.5rem;
+      border-radius: 6px;
+    }
+
+    /* Data Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    /* Athlete Card */
+    .card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 0 15px var(--primary-glow);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: linear-gradient(to right, var(--primary), var(--accent));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .card:hover::before { opacity: 1; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .card-header h3 { font-size: 1.25rem; font-weight: 600; }
+    .role-badge {
+      font-size: 0.75rem;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    /* Upload UI */
+    .upload-btn {
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: white;
+      border: none;
+      padding: 0.5rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .upload-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(5px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 2rem;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .modal h3 { margin-bottom: 1rem; font-family: 'Outfit'; }
+    .modal input[type="file"] { margin-bottom: 1rem; color: white; }
+    
+    #progress-container {
+      display: none;
+      margin-top: 1rem;
+      text-align: left;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--primary);
+      transition: width 0.3s;
+    }
+
+    .intelligence-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .metric {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+    }
+    
+    .high-score { color: #34d399; }
+    .med-score { color: #fbbf24; }
+    
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .card { animation: fadeIn 0.4s ease forwards; }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>UNSEEN SPORTS</h1>
+    </div>
+    <div class="global-controls">
+      <select id="global-sport-select" onchange="changeSport()">
+        <option value="cricket">Cricket</option>
+        <option value="football">Football</option>
+        <option value="basketball">Basketball</option>
+        <option value="tennis">Tennis</option>
+      </select>
+      <button class="upload-btn" onclick="openVideoModal()">Upload Video</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <nav>
+        <ul>
+          <li class="active">Discover Talent</li>
+          <li>AI Scout Search</li>
+          <li>Shortlists</li>
+          <li>Compare Athletes</li>
+          <li>Analytics</li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <div class="dashboard-header">
+        <div>
+          <h2 id="page-title">Global Discovery Network</h2>
+          <p style="color: var(--text-muted); margin-top: 0.5rem;" id="page-desc">Showing top verified intelligence profiles for Cricket.</p>
+        </div>
+      </div>
+
+      <div class="filters">
+        <select id="role-filter">
+          <option value="all">All Roles</option>
+        </select>
+        <select id="confidence-filter">
+          <option value="all">Any Confidence</option>
+          <option value="HIGH">High Confidence</option>
+        </select>
+      </div>
+
+      <div class="grid" id="athlete-grid">
+        <!-- Athletes injected here -->
+        <div style="color: #94a3b8;">Loading universal intelligence data...</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Video Upload Modal -->
+  <div class="modal-overlay" id="video-modal">
+    <div class="modal">
+      <h3>Upload Match Footage</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+        The CV engine will extract events and biomechanics automatically.
+      </p>
+      <input type="file" id="video-file" accept="video/mp4,video/mov">
+      <br>
+      <button class="upload-btn" onclick="uploadVideo()" style="margin-left:0;">Analyze Video</button>
+      <button onclick="closeVideoModal()" style="background:transparent; color:white; border:none; margin-left:1rem; cursor:pointer;">Cancel</button>
+
+      <div id="progress-container">
+        <div style="font-size: 0.8rem; color: var(--text-muted);" id="progress-text">Processing...</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const config = {
+      cricket: { roles: ["Batter", "Bowler", "All-rounder", "Wicketkeeper"] },
+      football: { roles: ["Goalkeeper", "Defender", "Midfielder", "Winger", "Forward"] },
+      basketball: { roles: ["Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center"] },
+      tennis: { roles: ["Singles Player", "Doubles Player"] }
+    };
+
+    function changeSport() {
+      const sport = document.getElementById("global-sport-select").value;
+      
+      // Update UI labels
+      document.getElementById("page-desc").innerText = `Showing top verified intelligence profiles for ${sport.charAt(0).toUpperCase() + sport.slice(1)}.`;
+      
+      // Update role filter options
+      const roleFilter = document.getElementById("role-filter");
+      roleFilter.innerHTML = '<option value="all">All Roles</option>';
+      config[sport].roles.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.toLowerCase();
+        opt.innerText = r;
+        roleFilter.appendChild(opt);
+      });
+
+      fetchAthletes(sport);
+    }
+
+    async function fetchAthletes(sport) {
+      const grid = document.getElementById("athlete-grid");
+      grid.innerHTML = '<div style="color: #94a3b8; grid-column: 1/-1; text-align: center; padding: 2rem;">Querying Intelligence Engine...</div>';
+
+      try {
+        const res = await fetch(`/api/players?sport=${sport}`);
+        const data = await res.json();
+        
+        grid.innerHTML = '';
+        
+        if (data.length === 0) {
+          grid.innerHTML = '<div style="color: #94a3b8;">No athletes found for this sport.</div>';
+          return;
+        }
+
+        data.forEach((p, i) => {
+          const scoreClass = p.talentIndex > 75 ? 'high-score' : (p.talentIndex > 60 ? 'med-score' : '');
+          
+          grid.innerHTML += `
+            <div class="card" style="animation-delay: ${i * 0.05}s">
+              <div class="card-header">
+                <div>
+                  <h3>${p.name}</h3>
+                  <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.25rem;">
+                    ${p.league ? p.league.name : 'Unknown Competition'}
+                  </div>
+                </div>
+                <div class="role-badge">${p.role}</div>
+              </div>
+              
+              <div class="intelligence-metrics">
+                <div class="metric">
+                  <span class="metric-label">Talent Score</span>
+                  <span class="metric-value ${scoreClass}">${p.talentIndex || '--'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Recent Form</span>
+                  <span class="metric-value">${p.recentForm || '--'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Consistency</span>
+                  <span class="metric-value">${p.consistency || '--'}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Data Confidence</span>
+                  <span class="metric-value" style="font-size: 1rem; align-self: flex-start; margin-top: 0.5rem; color: ${p.confidence==='HIGH'?'#34d399':'#fbbf24'}">${p.confidence}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      } catch (e) {
+        grid.innerHTML = '<div style="color: #ef4444;">Error loading athletes. Ensure the backend server is running.</div>';
+      }
+    }
+
+    // Video Upload Logic
+    function openVideoModal() {
+      document.getElementById('video-modal').style.display = 'flex';
+    }
+    
+    function closeVideoModal() {
+      document.getElementById('video-modal').style.display = 'none';
+      document.getElementById('progress-container').style.display = 'none';
+      document.getElementById('progress-fill').style.width = '0%';
+    }
+
+    async function uploadVideo() {
+      const fileInput = document.getElementById('video-file');
+      if (!fileInput.files[0]) return alert("Please select a video file first.");
+
+      const formData = new FormData();
+      formData.append('video', fileInput.files[0]);
+      formData.append('sport', document.getElementById('global-sport-select').value);
+
+      document.getElementById('progress-container').style.display = 'block';
+      document.getElementById('progress-text').innerText = "Uploading to Node.js Orchestrator...";
+      document.getElementById('progress-fill').style.width = '20%';
+
+      try {
+        const res = await fetch('/api/video/analyze', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('progress-text').innerText = "CV Model Running (Tracking Athletes)...";
+          document.getElementById('progress-fill').style.width = '50%';
+          
+          // Poll for completion
+          pollVideoStatus(data.taskId);
+        }
+      } catch (e) {
+        alert("Upload failed.");
+      }
+    }
+
+    function pollVideoStatus(taskId) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/video/status/${taskId}`);
+          const data = await res.json();
+          
+          if (data.status === "COMPLETED") {
+            clearInterval(interval);
+            document.getElementById('progress-text').innerText = "Complete! Metrics mapped to SportEngine.";
+            document.getElementById('progress-fill').style.width = '100%';
+            setTimeout(() => {
+              closeVideoModal();
+              alert("Video processing complete! Extracted metrics: " + JSON.stringify(data.metrics));
+            }, 1000);
+          }
+        } catch (e) {
+          clearInterval(interval);
+        }
+      }, 2000);
+    }
+
+    // Init
+    changeSport();
+  </script>
+</body>
+</html>

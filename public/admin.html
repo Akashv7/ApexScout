@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Record a Match | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="admin">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="register.html">Register a Player</a>
+  </div>
+</nav>
+
+<header class="hero" style="padding:48px 0 36px;">
+  <div class="wrap">
+    <div class="eyebrow">LEAGUE ORGANIZER / DEMO TOOL</div>
+    <h2 style="color:var(--chalk); margin-top:10px;">Record a match result.</h2>
+    <p class="hero-sub" style="margin-top:14px;">This is the input that feeds the Talent Index Engine. Submitting here triggers a real, full recomputation of team ratings, league strength, and every affected player's Talent Index — check a player's profile before and after to see it move.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap admin-grid">
+    <div>
+      <div class="form-card" style="max-width:none;">
+        <div class="form-row">
+          <label>League</label>
+          <select id="a-league" onchange="onLeagueChange()"><option>Loading…</option></select>
+        </div>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label>Team A</label>
+            <select id="a-teamA"></select>
+          </div>
+          <div class="form-row">
+            <label>Team B</label>
+            <select id="a-teamB"></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Winner</label>
+          <select id="a-winner"></select>
+        </div>
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" id="a-date" value="2026-08-15">
+        </div>
+
+        <h4 style="font-size:13px; text-transform:uppercase; margin:22px 0 10px;">Player Performances (optional)</h4>
+        <div id="perf-rows"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addPerfRow()">+ Add performance</button>
+
+        <div style="margin-top:22px;">
+          <button class="btn btn-primary" onclick="submitMatch()">Submit Match &amp; Recompute</button>
+        </div>
+        <div id="admin-msg" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stat-block">
+        <h4>CURRENT LEAGUE STRENGTHS</h4>
+        <div id="league-strengths"></div>
+      </div>
+      <div class="stat-block">
+        <h4>RECENT MATCHES</h4>
+        <div id="recent-matches" style="font-size:13px; max-height:340px; overflow:auto;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>No auth on this page yet — production would restrict it to verified league organizers.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  let allPlayers = [];
+  let teamsCache = [];
+
+  async function init(){
+    const leagues = await apiGet("/leagues");
+    document.getElementById("a-league").innerHTML = leagues.map(l => `<option value="${l.id}">${l.name}</option>`).join("");
+    allPlayers = await apiGet("/players?sport=Cricket").catch(()=>[]);
+    await onLeagueChange();
+    await refreshSidebar();
+    addPerfRow();
+  }
+
+  async function onLeagueChange(){
+    const leagueId = document.getElementById("a-league").value;
+    teamsCache = await apiGet(`/leagues/${leagueId}/teams`);
+    const opts = teamsCache.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    document.getElementById("a-teamA").innerHTML = opts;
+    document.getElementById("a-teamB").innerHTML = opts;
+    updateWinnerOptions();
+  }
+
+  function updateWinnerOptions(){
+    const a = document.getElementById("a-teamA").value;
+    const b = document.getElementById("a-teamB").value;
+    const teamA = teamsCache.find(t => t.id === a);
+    const teamB = teamsCache.find(t => t.id === b);
+    document.getElementById("a-winner").innerHTML = `
+      <option value="${a}">${teamA ? teamA.name : "Team A"}</option>
+      <option value="${b}">${teamB ? teamB.name : "Team B"}</option>
+      <option value="">Draw / Tie</option>
+    `;
+  }
+  document.getElementById("a-teamA").addEventListener("change", updateWinnerOptions);
+  document.getElementById("a-teamB").addEventListener("change", updateWinnerOptions);
+
+  function addPerfRow(){
+    const row = document.createElement("div");
+    row.className = "perf-row";
+    row.innerHTML = `
+      <select class="perf-player">${allPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join("")}</select>
+      <select class="perf-type" onchange="toggleStatFields(this)">
+        <option value="batting">Batting</option>
+        <option value="bowling">Bowling</option>
+      </select>
+      <input class="perf-stat1" type="number" placeholder="Runs">
+      <input class="perf-stat2" type="number" placeholder="Balls faced" style="width:100%;">
+      <button class="btn btn-ghost btn-sm" onclick="this.closest('.perf-row').remove()">Remove</button>
+    `;
+    document.getElementById("perf-rows").appendChild(row);
+  }
+
+  function toggleStatFields(select){
+    const row = select.closest(".perf-row");
+    const s1 = row.querySelector(".perf-stat1");
+    const s2 = row.querySelector(".perf-stat2");
+    if (select.value === "bowling"){
+      s1.placeholder = "Wickets"; s2.placeholder = "Economy";
+    } else {
+      s1.placeholder = "Runs"; s2.placeholder = "Balls faced";
+    }
+  }
+
+  async function submitMatch(){
+    const msg = document.getElementById("admin-msg");
+    const leagueId = document.getElementById("a-league").value;
+    const teamAId = document.getElementById("a-teamA").value;
+    const teamBId = document.getElementById("a-teamB").value;
+    const winnerTeamId = document.getElementById("a-winner").value || null;
+    const date = document.getElementById("a-date").value;
+
+    const performances = [...document.querySelectorAll(".perf-row")].map(row => {
+      const type = row.querySelector(".perf-type").value;
+      const playerId = row.querySelector(".perf-player").value;
+      const s1 = Number(row.querySelector(".perf-stat1").value) || 0;
+      const s2 = Number(row.querySelector(".perf-stat2").value) || 0;
+      return type === "batting"
+        ? { playerId, type, runs: s1, ballsFaced: s2 }
+        : { playerId, type, wickets: s1, economy: s2 };
+    });
+
+    try {
+      const result = await apiPost("/matches", { leagueId, teamAId, teamBId, winnerTeamId, date, performances });
+      msg.innerHTML = `<div class="form-msg success">${result.message}</div>`;
+      await refreshSidebar();
+    } catch(e){
+      msg.innerHTML = `<div class="form-msg error">${e.message}</div>`;
+    }
+  }
+
+  async function refreshSidebar(){
+    const leagues = await apiGet("/leagues");
+    renderBarChart("league-strengths", leagues.map(l => ({ label: l.name, value: l.strength })));
+
+    const matches = await apiGet("/matches");
+    document.getElementById("recent-matches").innerHTML = matches.length
+      ? `<div class="agent-output">` + matches.slice(0,15).map(m =>
+          `<div class="agent-output-row"><span>${m.date}</span><span>${(m.performances||[]).length} perf. logged</span></div>`
+        ).join("") + `</div>`
+      : emptyStateHTML("?", "No matches yet", "Submit the form to record your first match.");
+  }
+
+  init();
+</script>
+</body>
+</html>

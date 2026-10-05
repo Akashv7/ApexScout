@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scout Zone | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="scout">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="register.html">Register a Player</a>
+  </div>
+</nav>
+
+<header class="hero" style="padding:48px 0 36px;">
+  <div class="wrap">
+    <div class="eyebrow">FOR SCOUTS, ACADEMIES &amp; SELECTORS</div>
+    <h2 style="color:var(--chalk); margin-top:10px;">Filter by what you actually need,<br>not by which league you've heard of.</h2>
+    <p class="hero-sub" style="margin-top:14px;">Results are ranked by the Scout-Matching Agent, which explains <em>why</em> each player is recommended — not just a filtered table.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap scout-panel">
+    <div class="filter-box">
+      <h4>FILTERS</h4>
+      <div class="filter-group">
+        <label>Format</label>
+        <select id="f-format">
+          <option value="all">All formats</option>
+          <option value="Ground">Ground</option>
+          <option value="Turf">Turf</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Role</label>
+        <select id="f-role">
+          <option value="all">Any role</option>
+          <option>Fast Bowler</option>
+          <option>Top-order Batter</option>
+          <option>Batting All-rounder</option>
+          <option>Left-arm Spinner</option>
+          <option>Wicketkeeper-Batter</option>
+          <option>Fast-medium Bowler</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Minimum Talent Index</label>
+        <input type="range" id="f-index" min="0" max="100" value="0">
+        <div id="f-index-val" style="font-family:var(--mono); font-size:12px; margin-top:4px;">0+</div>
+      </div>
+      <div class="filter-group">
+        <label>Prioritize</label>
+        <select id="f-prioritize">
+          <option value="index">Highest Talent Index</option>
+          <option value="undervalued">Most undervalued (agent pick)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="applyFilters()">Apply Filters</button>
+    </div>
+
+    <div>
+      <div class="section-head" style="margin-bottom:20px;">
+        <div>
+          <div class="eyebrow" id="result-count">LOADING…</div>
+          <h3>Results</h3>
+        </div>
+      </div>
+      <div id="results"></div>
+
+      <div class="stat-block" style="margin-top:34px;">
+        <h4>YOUR SHORTLIST (<span id="shortlist-count">0</span>)</h4>
+        <p class="small-note">Persisted server-side under a demo scout ID — reopen this page later and it's still there.</p>
+        <div id="shortlist-empty" style="font-size:13.5px; color:var(--ink-soft);">Nothing shortlisted yet — add players from the results above.</div>
+        <ul id="shortlist-list" style="font-size:14.5px; line-height:2;"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>Weekly digest emails &amp; evidence-packet export are planned for the next build phase.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  const SCOUT_ID = "demo-scout"; // stand-in for a logged-in scout account
+
+  function resultRowHTML(p, shortlistIds){
+    const inList = shortlistIds.includes(p.id);
+    const indexDisplay = p.talentIndex === null || p.talentIndex === undefined ? "—" : p.talentIndex.toFixed(0);
+    return `
+      <div class="result-row">
+        <div class="result-left">
+          <div class="result-index">${indexDisplay}</div>
+          <div>
+            <div style="font-weight:700;">${p.name}</div>
+            <div style="font-size:12.5px; color:var(--ink-soft);">${p.role} · ${p.sport} (${p.format}) · ${p.league ? p.league.name : "—"}</div>
+            <div style="font-size:12px; color:var(--clay-deep); margin-top:3px;">${p.matchReason || ""}</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <a class="btn btn-ghost btn-sm" href="player.html?id=${p.id}">View Profile</a>
+          <button class="shortlist-btn ${inList ? 'added' : ''}" onclick="toggleShortlist('${p.id}', ${inList})">${inList ? 'Added ✓' : '+ Shortlist'}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async function applyFilters(){
+    const format = document.getElementById("f-format").value;
+    const role = document.getElementById("f-role").value;
+    const minIndex = document.getElementById("f-index").value;
+    const prioritize = document.getElementById("f-prioritize").value;
+
+    document.getElementById("result-count").textContent = "LOADING…";
+    document.getElementById("results").innerHTML = skeletonRows(3);
+    try {
+      const [list, shortlist] = await Promise.all([
+        apiGet(`/agents/scout-match?format=${format}&role=${role}&minIndex=${minIndex}&prioritize=${prioritize}`),
+        apiGet(`/scout/shortlist/${SCOUT_ID}`),
+      ]);
+      const shortlistIds = shortlist.map(p => p.id);
+      document.getElementById("result-count").textContent = `${list.length} PLAYER${list.length !== 1 ? 'S' : ''} MATCH`;
+      document.getElementById("results").innerHTML = list.length
+        ? list.map(p => resultRowHTML(p, shortlistIds)).join("")
+        : emptyStateHTML("?", "No matches", "No players match these filters yet.");
+      renderShortlist(shortlist);
+    } catch(e){
+      document.getElementById("result-count").textContent = "ERROR";
+      document.getElementById("results").innerHTML = emptyStateHTML("!", "Couldn't reach the API", e.message);
+    }
+  }
+
+  async function toggleShortlist(id, currentlyIn){
+    if (currentlyIn) await apiDelete(`/scout/shortlist/${SCOUT_ID}/${id}`);
+    else await apiPost(`/scout/shortlist/${SCOUT_ID}`, { playerId: id });
+    applyFilters();
+  }
+
+  function renderShortlist(list){
+    document.getElementById("shortlist-count").textContent = list.length;
+    document.getElementById("shortlist-empty").style.display = list.length ? "none" : "block";
+    document.getElementById("shortlist-list").innerHTML = list.map(p =>
+      `<li>&#8226; ${p.name} — Talent Index ${p.talentIndex ?? "—"} <a href="player.html?id=${p.id}" style="color:var(--clay-deep); font-weight:600;">(view)</a></li>`
+    ).join("");
+  }
+
+  document.getElementById("f-index").addEventListener("input", (e) => {
+    document.getElementById("f-index-val").textContent = e.target.value + "+";
+  });
+
+  applyFilters();
+</script>
+</body>
+</html>

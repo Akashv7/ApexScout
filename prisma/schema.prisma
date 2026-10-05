@@ -1,0 +1,159 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  athletes  Athlete[]
+}
+
+enum UserRole {
+  PLAYER
+  SCOUT
+  COACH
+  ACADEMY
+  TEAM
+  ADMIN
+}
+
+model Sport {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g., "Cricket", "Football", "Basketball"
+  config      Json?    // Optional config for metrics mapping
+
+  athletes     Athlete[]
+  competitions Competition[]
+}
+
+model Competition {
+  id        String   @id @default(uuid())
+  name      String
+  region    String?
+  strength  Float    @default(50.0) // Elo-based strength
+  sportId   String
+  sport     Sport    @relation(fields: [sportId], references: [id])
+  
+  teams     Team[]
+  events    Event[]
+}
+
+model Team {
+  id            String   @id @default(uuid())
+  name          String
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  currentRating Float    @default(1500.0)
+  
+  athletes      Athlete[]
+  
+  homeEvents    Event[]  @relation("TeamA")
+  awayEvents    Event[]  @relation("TeamB")
+  wonEvents     Event[]  @relation("Winner")
+}
+
+model Athlete {
+  id                 String   @id @default(uuid())
+  userId             String?  // Nullable if registered by scout
+  user               User?    @relation(fields: [userId], references: [id])
+  name               String
+  dateOfBirth        DateTime?
+  nationality        String?
+  sportId            String
+  sport              Sport    @relation(fields: [sportId], references: [id])
+  teamId             String?
+  team               Team?    @relation(fields: [teamId], references: [id])
+  role               String   // Position or Role
+  bio                String?
+  trustLevel         String   @default("UNVERIFIED") // UNVERIFIED, SCOUTED, AGENT
+  
+  // Universal Intelligence Model Rollups
+  talentScore        Float?
+  performanceScore   Float?
+  recentForm         Float?
+  consistency        Float?
+  confidence         String   @default("LOW") // HIGH, MEDIUM, LOW
+  
+  performances       Performance[]
+  shortlistEntries   ShortlistAthlete[]
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  date          DateTime
+  
+  teamAId       String
+  teamA         Team     @relation("TeamA", fields: [teamAId], references: [id])
+  teamBId       String
+  teamB         Team     @relation("TeamB", fields: [teamBId], references: [id])
+  
+  winnerId      String?
+  winner        Team?    @relation("Winner", fields: [winnerId], references: [id])
+
+  performances  Performance[]
+}
+
+model Performance {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  athleteId String
+  athlete   Athlete  @relation(fields: [athleteId], references: [id])
+  
+  // JSONB is critical here so we can store sport-specific metrics
+  // e.g., {"runs": 50, "wickets": 0} OR {"goals": 1, "xg": 0.8}
+  metrics   Json
+  
+  createdAt DateTime @default(now())
+}
+
+model ScoutProfile {
+  id        String   @id @default(uuid())
+  scoutId   String   @unique
+  // Link to user if necessary
+  
+  shortlists Shortlist[]
+}
+
+model Shortlist {
+  id        String   @id @default(uuid())
+  scoutId   String
+  scout     ScoutProfile @relation(fields: [scoutId], references: [id])
+  name      String   @default("My Shortlist")
+  
+  athletes  ShortlistAthlete[]
+}
+
+model ShortlistAthlete {
+  id          String   @id @default(uuid())
+  shortlistId String
+  shortlist   Shortlist @relation(fields: [shortlistId], references: [id])
+  athleteId   String
+  athlete     Athlete   @relation(fields: [athleteId], references: [id])
+  
+  notes       String?
+  priority    String?   // HIGH, MEDIUM, LOW
+  
+  @@unique([shortlistId, athleteId])
+}
+
+model AgentAuditLog {
+  id          String   @id @default(uuid())
+  query       String
+  sport       String?
+  filters     Json
+  model       String
+  timestamp   DateTime @default(now())
+}

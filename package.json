@@ -1,0 +1,27 @@
+{
+  "name": "unseen-xi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node scripts/seed.js",
+    "postinstall": "prisma skills sync || exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.24.0",
+    "@prisma/client": "^7.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "form-data": "^4.0.6",
+    "multer": "^2.4.0",
+    "nanoid": "^3.3.18"
+  },
+  "devDependencies": {
+    "prisma": "^8.0.0-rc.17"
+  }
+}

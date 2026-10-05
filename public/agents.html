@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agents | Unseen XI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="agents">
+
+<nav class="topnav">
+  <div class="wrap">
+    <a class="brand" href="index.html"><span class="dot"></span>Unseen XI</a>
+    <div class="navlinks">
+      <a href="index.html" data-nav="home">Discover</a>
+      <a href="cricket.html" data-nav="cricket">Cricket</a>
+      <a href="scout.html" data-nav="scout">Scout Zone</a>
+      <a href="agents.html" data-nav="agents">AI Agents</a>
+      <a href="admin.html" data-nav="admin">Record a Match</a>
+    </div>
+    <a class="nav-cta" href="register.html">Register a Player</a>
+  </div>
+</nav>
+
+<header class="hero" style="padding:48px 0 36px;">
+  <div class="wrap">
+    <div class="eyebrow">SYSTEM STATUS</div>
+    <h2 style="color:var(--chalk); margin-top:10px;">The agents behind the numbers.</h2>
+    <p class="hero-sub" style="margin-top:14px;">Four rule-based agents currently run for real against the live dataset. They're deliberately simple and fully inspectable (see <code style="color:var(--flood);">/lib/agents</code> in the source) rather than opaque ML calls — a documented, debuggable baseline that a real classifier or video model can slot into later without changing how the rest of the app talks to them.</p>
+    <div id="status-strip" style="margin-top:24px; display:flex; gap:30px; flex-wrap:wrap;"></div>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap agent-grid">
+
+    <div class="agent-card">
+      <div class="agent-card-head">
+        <div class="agent-icon">TI</div>
+        <div>
+          <div class="agent-name">Talent Index Engine</div>
+          <div class="agent-status"><span class="dot"></span>ACTIVE · RUNS ON EVERY MATCH</div>
+        </div>
+      </div>
+      <p class="agent-desc">Elo-style team ratings + opponent-weighted player impact scoring. This is the core differentiator — see <code>lib/ratingEngine.js</code>. Recomputes fully whenever a match is recorded.</p>
+      <div id="out-ratings"></div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-card-head">
+        <div class="agent-icon">DA</div>
+        <div>
+          <div class="agent-name">Discovery Agent</div>
+          <div class="agent-status"><span class="dot"></span>ACTIVE</div>
+        </div>
+      </div>
+      <p class="agent-desc">Flags players whose Talent Index is high relative to their league's strength — the exact "hidden gem" case the platform exists for. Powers the homepage feed.</p>
+      <div class="agent-output" id="out-discovery"></div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-card-head">
+        <div class="agent-icon">VA</div>
+        <div>
+          <div class="agent-name">Verification Agent</div>
+          <div class="agent-status"><span class="dot"></span>ACTIVE · ON-DEMAND</div>
+        </div>
+      </div>
+      <p class="agent-desc">Checks logged stats against format-specific plausibility limits (e.g. max wickets/strike rate for the format), and can upgrade a player's trust tier automatically when their record checks out. Try it from any player's profile page.</p>
+      <div class="agent-output" id="out-trust"></div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-card-head">
+        <div class="agent-icon">SM</div>
+        <div>
+          <div class="agent-name">Scout-Matching Agent</div>
+          <div class="agent-status"><span class="dot"></span>ACTIVE</div>
+        </div>
+      </div>
+      <p class="agent-desc">Ranks players against a scout's search criteria and generates a plain-language reason for each recommendation — powers Scout Zone's results list.</p>
+      <div class="agent-output" id="out-scoutmatch"></div>
+    </div>
+
+    <div class="agent-card" style="grid-column: 1 / -1;">
+      <div class="agent-card-head">
+        <div class="agent-icon">MO</div>
+        <div>
+          <div class="agent-name">Moderation Agent</div>
+          <div class="agent-status"><span class="dot"></span>ACTIVE · RUNS ON REGISTRATION</div>
+        </div>
+      </div>
+      <p class="agent-desc">Screens every self-submitted bio for spam/contact-harvesting patterns and basic profanity before it's saved — see it reject text live in the box below (nothing is actually submitted).</p>
+      <textarea id="mod-test" placeholder="Try typing a bio with a link or phone number in it…" style="width:100%; min-height:70px; padding:10px; border:1px solid var(--line); border-radius:var(--radius); font-family:var(--body);"></textarea>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="testModeration()">Screen this text</button>
+      <div id="mod-result" style="margin-top:10px; font-size:13px;"></div>
+    </div>
+
+  </div>
+
+  <div class="stat-block" style="margin-top:34px;">
+    <h4>NOT YET BUILT — HONEST ROADMAP</h4>
+    <p class="small-note" style="line-height:1.7;">
+      These four agents are real but rule-based. Two agents from the original design are still just concepts, not code:
+      <strong>Video Highlight Extraction Agent</strong> (would need a computer-vision pipeline to auto-detect key moments in uploaded footage) and a genuinely learned, ML-based upgrade to Verification (currently rule-based plausibility checks only, no video cross-referencing). Both are the natural next build phase.
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <span>&copy; 2026 Unseen XI</span>
+    <span>All figures on this page are live, not mocked.</span>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+  async function testModeration(){
+    const text = document.getElementById("mod-test").value;
+    // Client-side mirror of the same patterns the server-side Moderation
+    // Agent uses, so this box works without needing a submission endpoint.
+    const patterns = [
+      /\b(whatsapp|telegram)\s*[:\-]?\s*\+?\d{6,}/i,
+      /https?:\/\/\S+/i,
+      /\b(fuck|bitch|asshole|bastard)\b/i,
+    ];
+    const flags = patterns.filter(p => p.test(text));
+    const el = document.getElementById("mod-result");
+    el.innerHTML = flags.length
+      ? `<span style="color:var(--clay-deep); font-weight:700;">Flagged (${flags.length} pattern${flags.length>1?'s':''} matched)</span> — would be rejected before saving.`
+      : `<span style="color:var(--turf-deep); font-weight:700;">Approved</span> — would be saved as-is.`;
+  }
+
+  (async function(){
+    ["out-ratings","out-discovery","out-trust","out-scoutmatch"].forEach(id => {
+      document.getElementById(id).innerHTML = skeletonRows(3);
+    });
+    try {
+      const status = await apiGet("/agents/status");
+      document.getElementById("status-strip").innerHTML = `
+        <div><div class="stat-num" style="font-size:34px; color:var(--flood);">${status.totalPlayers}</div><div class="small-note" style="color:rgba(244,242,232,0.6);">Players tracked</div></div>
+        <div><div class="stat-num" style="font-size:34px; color:var(--flood);">${status.totalMatches}</div><div class="small-note" style="color:rgba(244,242,232,0.6);">Matches processed</div></div>
+        <div><div class="stat-num" style="font-size:34px; color:var(--flood);">${status.hiddenGemsAvailable}</div><div class="small-note" style="color:rgba(244,242,232,0.6);">Hidden gems flagged</div></div>
+      `;
+    } catch(e){}
+
+    try {
+      const leagues = await apiGet("/leagues");
+      renderBarChart("out-ratings", leagues.map(l => ({ label: l.name, value: l.strength })));
+    } catch(e){ document.getElementById("out-ratings").textContent = "Error: " + e.message; }
+
+    try {
+      const gems = await apiGet("/agents/discovery");
+      document.getElementById("out-discovery").innerHTML = gems.length
+        ? `<div class="agent-output">` + gems.slice(0,4).map(g =>
+            `<div class="agent-output-row"><span>${g.name}</span><strong>${g.hiddenGemScore}</strong></div>`
+          ).join("") + `</div>`
+        : emptyStateHTML("?", "No gems yet", "Register players and log matches to see picks here.");
+    } catch(e){ document.getElementById("out-discovery").textContent = "Error: " + e.message; }
+
+    try {
+      const status = await apiGet("/agents/status");
+      document.getElementById("out-trust").innerHTML = `<div class="agent-output">` + Object.entries(status.trustBreakdown).map(([tier, count]) =>
+        `<div class="agent-output-row"><span>${trustLabel(tier)}</span><strong>${count}</strong></div>`
+      ).join("") + `</div>`;
+    } catch(e){ document.getElementById("out-trust").textContent = "Error: " + e.message; }
+
+    try {
+      const matches = await apiGet("/agents/scout-match?prioritize=undervalued");
+      document.getElementById("out-scoutmatch").innerHTML = matches.length
+        ? `<div class="agent-output">` + matches.slice(0,4).map(p =>
+            `<div class="agent-output-row"><span>${p.name}</span><strong>${p.talentIndex}</strong></div>`
+          ).join("") + `</div>`
+        : emptyStateHTML("?", "No matches yet", "Register players to see recommendations here.");
+    } catch(e){ document.getElementById("out-scoutmatch").textContent = "Error: " + e.message; }
+  })();
+</script>
+</body>
+</html>
